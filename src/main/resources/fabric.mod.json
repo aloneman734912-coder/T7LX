@@ -5,6 +5,9 @@
   "name": "T7LX",
   "description": "T7LX client-side mod menu with Freecam.",
   "environment": "client",
+  "mixins": [
+    "t7lx.client.mixins.json"
+  ],
   "entrypoints": {
     "client": [
       "com.t7lx.T7LXClient"
