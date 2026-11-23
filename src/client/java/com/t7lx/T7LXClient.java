@@ -29,7 +29,7 @@ public final class T7LXClient implements ClientModInitializer {
         leftKey = register("key.t7lx.left", GLFW.GLFW_KEY_A);
         rightKey = register("key.t7lx.right", GLFW.GLFW_KEY_D);
         upKey = register("key.t7lx.up", GLFW.GLFW_KEY_SPACE);
-        downKey = register("key.t7lx.down", GLFW.GLFW_KEY_LEFT_CONTROL);
+        downKey = register("key.t7lx.down", GLFW.GLFW_KEY_LEFT_SHIFT);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (menuKey.consumeClick()) {
@@ -47,6 +47,10 @@ public final class T7LXClient implements ClientModInitializer {
 
     static boolean isFreecamEnabled() {
         return freecam;
+    }
+
+    static ArmorStand getFreecamCamera() {
+        return freecam ? camera : null;
     }
 
     static void toggleFreecam() {
@@ -108,8 +112,8 @@ public final class T7LXClient implements ClientModInitializer {
         double sideZ = Math.sin(radians);
         double dx = 0, dy = 0, dz = 0;
 
-        if (forwardKey.isDown()) { dx += forwardX; dz += forwardZ; }
-        if (backKey.isDown()) { dx -= forwardX; dz -= forwardZ; }
+        if (forwardKey.isDown()) { dx -= forwardX; dz -= forwardZ; }
+        if (backKey.isDown()) { dx += forwardX; dz += forwardZ; }
         if (rightKey.isDown()) { dx += sideX; dz += sideZ; }
         if (leftKey.isDown()) { dx -= sideX; dz -= sideZ; }
         if (upKey.isDown()) dy += 1;
