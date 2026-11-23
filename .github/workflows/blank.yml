@@ -21,7 +21,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.8.0'
-      - name: Build mod
+      - name: Build mod (Minecraft 26.1.2)
         run: gradle build --no-daemon
       - name: Upload T7LX JAR
         uses: actions/upload-artifact@v4
