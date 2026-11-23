@@ -13,8 +13,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract project
-        run: |
-          unzip T7LX-Fabric-Mod-Source.zip -d project
+        run: unzip "T7LX-Fabric-Mod-Source (1).zip" -d project
 
       - name: Install Java
         uses: actions/setup-java@v4
