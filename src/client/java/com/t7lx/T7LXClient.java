@@ -103,6 +103,17 @@ public final class T7LXClient implements ClientModInitializer {
         camera.zOld = camera.getZ();
         camera.xRotO = camera.getXRot();
         camera.yRotO = camera.getYRot();
+        // Transfer mouse rotation from the player to the freecam camera.
+        float playerYaw = client.player.getYRot();
+        float playerPitch = client.player.getXRot();
+        camera.setYRot(camera.getYRot() + (playerYaw - lastPlayerYaw));
+        camera.setXRot(Math.max(-90.0F, Math.min(90.0F,
+                camera.getXRot() + (playerPitch - lastPlayerPitch))));
+        lastPlayerYaw = playerYaw;
+        lastPlayerPitch = playerPitch;
+        client.player.setYRot(savedYaw);
+        client.player.setXRot(savedPitch);
+
         double speed = 0.55;
         float yaw = camera.getYRot();
         double radians = Math.toRadians(yaw);
@@ -112,10 +123,10 @@ public final class T7LXClient implements ClientModInitializer {
         double sideZ = Math.sin(radians);
         double dx = 0, dy = 0, dz = 0;
 
-        if (forwardKey.isDown()) { dx -= forwardX; dz -= forwardZ; }
-        if (backKey.isDown()) { dx += forwardX; dz += forwardZ; }
-        if (rightKey.isDown()) { dx += sideX; dz += sideZ; }
-        if (leftKey.isDown()) { dx -= sideX; dz -= sideZ; }
+        if (forwardKey.isDown()) { dx += forwardX; dz += forwardZ; }
+        if (backKey.isDown()) { dx -= forwardX; dz -= forwardZ; }
+        if (rightKey.isDown()) { dx -= sideX; dz -= sideZ; }
+        if (leftKey.isDown()) { dx += sideX; dz += sideZ; }
         if (upKey.isDown()) dy += 1;
         if (downKey.isDown()) dy -= 1;
 
