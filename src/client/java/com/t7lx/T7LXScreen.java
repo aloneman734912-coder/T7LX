@@ -32,8 +32,6 @@ public final class T7LXScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-
         int panelWidth = 330;
         int panelHeight = 210;
         int x = (this.width - panelWidth) / 2;
@@ -41,6 +39,7 @@ public final class T7LXScreen extends Screen {
 
         graphics.fill(x, y, x + panelWidth, y + panelHeight, PANEL);
         graphics.fill(x, y, x + panelWidth, y + 3, BLUE);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         graphics.text(this.font, "T7LX", this.width / 2 - this.font.width("T7LX") / 2, y + 18, 0xFFFFFFFF, true);
         graphics.text(this.font, "CLIENT MOD MENU", this.width / 2 - this.font.width("CLIENT MOD MENU") / 2,
                 y + 38, 0xFF8AA9C8, true);
