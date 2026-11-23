@@ -49,7 +49,7 @@ public final class T7LXClient implements ClientModInitializer {
         return freecam;
     }
 
-    static ArmorStand getFreecamCamera() {
+    public static ArmorStand getFreecamCamera() {
         return freecam ? camera : null;
     }
 
