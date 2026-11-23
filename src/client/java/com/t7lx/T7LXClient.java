@@ -7,6 +7,8 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
@@ -19,7 +21,8 @@ public final class T7LXClient implements ClientModInitializer {
 
     private static boolean freecam;
     private static ArmorStand camera;
-    private static float savedYaw, savedPitch, lastPlayerYaw, lastPlayerPitch;
+    private static float savedYaw, savedPitch;
+    private static MobEffectInstance previousNightVision;
 
     @Override
     public void onInitializeClient() {
@@ -60,8 +63,6 @@ public final class T7LXClient implements ClientModInitializer {
         if (!freecam) {
             savedYaw = client.player.getYRot();
             savedPitch = client.player.getXRot();
-            lastPlayerYaw = savedYaw;
-            lastPlayerPitch = savedPitch;
             camera = new ArmorStand(EntityType.ARMOR_STAND, client.level);
             camera.setPos(client.player.getX(), client.player.getEyeY(), client.player.getZ());
             camera.xo = camera.getX();
@@ -74,6 +75,9 @@ public final class T7LXClient implements ClientModInitializer {
             camera.setXRot(savedPitch);
             camera.setNoGravity(true);
             camera.setInvisible(true);
+            previousNightVision = client.player.getEffect(MobEffects.NIGHT_VISION);
+            if (previousNightVision != null) previousNightVision = new MobEffectInstance(previousNightVision);
+            client.player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 999999, 0, false, false, false));
             client.setCameraEntity(camera);
             freecam = true;
         } else {
@@ -81,6 +85,9 @@ public final class T7LXClient implements ClientModInitializer {
             client.setCameraEntity(client.player);
             client.player.setYRot(savedYaw);
             client.player.setXRot(savedPitch);
+            client.player.removeEffect(MobEffects.NIGHT_VISION);
+            if (previousNightVision != null) client.player.addEffect(previousNightVision);
+            previousNightVision = null;
             camera = null;
         }
     }
@@ -103,16 +110,8 @@ public final class T7LXClient implements ClientModInitializer {
         camera.zOld = camera.getZ();
         camera.xRotO = camera.getXRot();
         camera.yRotO = camera.getYRot();
-        // Transfer mouse rotation from the player to the freecam camera.
-        float playerYaw = client.player.getYRot();
-        float playerPitch = client.player.getXRot();
-        camera.setYRot(camera.getYRot() + (playerYaw - lastPlayerYaw));
-        camera.setXRot(Math.max(-90.0F, Math.min(90.0F,
-                camera.getXRot() + (playerPitch - lastPlayerPitch))));
-        lastPlayerYaw = playerYaw;
-        lastPlayerPitch = playerPitch;
-        client.player.setYRot(savedYaw);
-        client.player.setXRot(savedPitch);
+        // Mouse input already rotates the active camera entity. Do not copy
+        // player rotation deltas here: doing so causes double movement/jitter.
 
         double speed = 0.55;
         float yaw = camera.getYRot();
