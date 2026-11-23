@@ -78,20 +78,13 @@ public final class T7LXClient implements ClientModInitializer {
     private static void tickFreecam(Minecraft client) {
         if (client.player == null || client.level == null || camera == null) {
             freecam = false;
+            if (client.player != null) client.setCameraEntity(client.player);
+            camera = null;
             return;
         }
 
-        // Transfer mouse-look from the real player to the detached camera.
-        float playerYaw = client.player.getYRot();
-        float playerPitch = client.player.getXRot();
-        camera.setYRot(camera.getYRot() + playerYaw - lastPlayerYaw);
-        camera.setXRot(Math.max(-89.0F, Math.min(89.0F,
-                camera.getXRot() + playerPitch - lastPlayerPitch)));
-        lastPlayerYaw = playerYaw;
-        lastPlayerPitch = playerPitch;
-        client.player.setYRot(savedYaw);
-        client.player.setXRot(savedPitch);
-
+        // Minecraft applies mouse-look directly to the active camera entity.
+        // Avoid resetting the player's rotation every tick, which causes jitter.
         double speed = 0.55;
         float yaw = camera.getYRot();
         double radians = Math.toRadians(yaw);
