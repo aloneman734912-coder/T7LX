@@ -60,6 +60,12 @@ public final class T7LXClient implements ClientModInitializer {
             lastPlayerPitch = savedPitch;
             camera = new ArmorStand(EntityType.ARMOR_STAND, client.level);
             camera.setPos(client.player.getX(), client.player.getEyeY(), client.player.getZ());
+            camera.xo = camera.getX();
+            camera.yo = camera.getY();
+            camera.zo = camera.getZ();
+            camera.xOld = camera.getX();
+            camera.yOld = camera.getY();
+            camera.zOld = camera.getZ();
             camera.setYRot(savedYaw);
             camera.setXRot(savedPitch);
             camera.setNoGravity(true);
@@ -83,8 +89,16 @@ public final class T7LXClient implements ClientModInitializer {
             return;
         }
 
-        // Minecraft applies mouse-look directly to the active camera entity.
-        // Avoid resetting the player's rotation every tick, which causes jitter.
+        // The camera is not added to the world, so vanilla never advances its
+        // previous coordinates. Keep interpolation history in sync to stop shaking.
+        camera.xo = camera.getX();
+        camera.yo = camera.getY();
+        camera.zo = camera.getZ();
+        camera.xOld = camera.getX();
+        camera.yOld = camera.getY();
+        camera.zOld = camera.getZ();
+        camera.xRotO = camera.getXRot();
+        camera.yRotO = camera.getYRot();
         double speed = 0.55;
         float yaw = camera.getYRot();
         double radians = Math.toRadians(yaw);
