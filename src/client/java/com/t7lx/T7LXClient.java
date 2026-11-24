@@ -48,7 +48,7 @@ public final class T7LXClient implements ClientModInitializer {
                 new KeyMapping(name, InputConstants.Type.KEYSYM, key, CATEGORY));
     }
 
-    static boolean isFreecamEnabled() {
+    public static boolean isFreecamEnabled() {
         return freecam;
     }
 
