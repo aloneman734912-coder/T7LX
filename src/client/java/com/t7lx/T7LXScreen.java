@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 public final class T7LXScreen extends Screen {
@@ -35,8 +36,8 @@ public final class T7LXScreen extends Screen {
         if (showCpsSlider) {
             this.addRenderableWidget(new AbstractSliderButton(
                     x + 18, y + 148, panelWidth - 36, 20,
-                    (T7LXClient.getCrystalCps() - 1) / 39.0,
-                    Component.literal("Crystal CPS: " + T7LXClient.getCrystalCps())) {
+                    Component.literal("Crystal CPS: " + T7LXClient.getCrystalCps()),
+                    (T7LXClient.getCrystalCps() - 1) / 39.0) {
                 @Override
                 protected void updateMessage() {
                     int cps = 1 + (int) Math.round(this.value * 39.0);
@@ -52,7 +53,10 @@ public final class T7LXScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         int x = (this.width - 330) / 2;
         int y = (this.height - PANEL_HEIGHT) / 2;
         boolean onCrystalOption = mouseX >= x + 18 && mouseX <= x + 312
@@ -63,7 +67,7 @@ public final class T7LXScreen extends Screen {
             this.init();
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     private static Component freecamLabel() {
