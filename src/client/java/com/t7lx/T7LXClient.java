@@ -115,19 +115,7 @@ public final class T7LXClient implements ClientModInitializer {
             return;
         }
 
-        // The camera is not added to the world, so vanilla never advances its
-        // previous coordinates. Keep interpolation history in sync to stop shaking.
-        camera.xo = camera.getX();
-        camera.yo = camera.getY();
-        camera.zo = camera.getZ();
-        camera.xOld = camera.getX();
-        camera.yOld = camera.getY();
-        camera.zOld = camera.getZ();
-        camera.xRotO = camera.getXRot();
-        camera.yRotO = camera.getYRot();
-        // Mouse input already rotates the active camera entity. Do not copy
-        // player rotation deltas here: doing so causes double movement/jitter.
-
+        // Mouse input rotates the freecam directly; do not copy player rotations.
         double speed = 0.55;
         float yaw = camera.getYRot();
         double radians = Math.toRadians(yaw);
@@ -139,8 +127,8 @@ public final class T7LXClient implements ClientModInitializer {
 
         // Match the expected freecam controls: W forward, S backward,
         // A left, and D right relative to the camera's facing direction.
-        if (forwardKey.isDown()) { dx -= forwardX; dz -= forwardZ; }
-        if (backKey.isDown()) { dx += forwardX; dz += forwardZ; }
+        if (forwardKey.isDown()) { dx += forwardX; dz += forwardZ; }
+        if (backKey.isDown()) { dx -= forwardX; dz -= forwardZ; }
         if (rightKey.isDown()) { dx += sideX; dz += sideZ; }
         if (leftKey.isDown()) { dx -= sideX; dz -= sideZ; }
         if (upKey.isDown()) dy += 1;
@@ -151,5 +139,16 @@ public final class T7LXClient implements ClientModInitializer {
             movement = movement.normalize().scale(speed);
             camera.setPos(camera.position().add(movement));
         }
+
+        // This camera is not ticked by the world. Synchronize interpolation
+        // history AFTER movement so rendering never lerps between stale positions.
+        camera.xo = camera.getX();
+        camera.yo = camera.getY();
+        camera.zo = camera.getZ();
+        camera.xOld = camera.getX();
+        camera.yOld = camera.getY();
+        camera.zOld = camera.getZ();
+        camera.xRotO = camera.getXRot();
+        camera.yRotO = camera.getYRot();
     }
 }
