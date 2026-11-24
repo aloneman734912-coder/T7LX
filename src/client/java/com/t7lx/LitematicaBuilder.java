@@ -30,6 +30,8 @@ public final class LitematicaBuilder {
     private static BlockPos currentTarget;
     private static BlockPos currentSupport;
     private static BlockHitResult currentSupportHit;
+    private static boolean placementPending;
+    private static int placementWaitTicks;
     private static String status = "Stopped";
 
     private LitematicaBuilder() {}
@@ -52,6 +54,8 @@ public final class LitematicaBuilder {
         running = false;
         paused = false;
         currentTarget = null;
+        placementPending = false;
+        placementWaitTicks = 0;
         clearMovement(Minecraft.getInstance());
         status = "Stopped";
     }
@@ -94,13 +98,39 @@ public final class LitematicaBuilder {
         if (currentTarget != null) {
             BlockState now = client.level.getBlockState(currentTarget);
             BlockState wanted = getSchematicState(schematicWorld, currentTarget);
-            if (wanted == null || !now.isAir() || wanted.isAir()) currentTarget = null;
+            if (wanted == null || wanted.isAir()) {
+                currentTarget = null;
+                placementPending = false;
+            } else if (now.equals(wanted)) {
+                // Count only confirmed placements; never abandon a block just
+                // because the interaction packet was sent.
+                placed++;
+                currentTarget = null;
+                placementPending = false;
+                placementWaitTicks = 0;
+            } else if (!now.isAir()) {
+                // Something other than the requested block occupies this spot.
+                currentTarget = null;
+                placementPending = false;
+            } else if (placementPending && ++placementWaitTicks < 8) {
+                status = "Waiting for block placement confirmation...";
+                clearMovement(client);
+                return;
+            } else if (placementPending) {
+                // Server rejected the attempt: reacquire support and retry.
+                placementPending = false;
+                placementWaitTicks = 0;
+                currentSupport = null;
+                currentSupportHit = null;
+            }
         }
 
         if (currentTarget == null) {
             currentTarget = findNearestMissing(client, schematicWorld, placements);
             currentSupport = null;
             currentSupportHit = null;
+            placementPending = false;
+            placementWaitTicks = 0;
         }
         if (currentTarget == null) {
             clearMovement(client);
@@ -114,7 +144,7 @@ public final class LitematicaBuilder {
             return;
         }
         int slot = findBlock(client, required);
-        if (slot < 0 && mode == Mode.SURVIVAL) {
+        if (mode == Mode.SURVIVAL && slot < 0) {
             clearMovement(client);
             status = "Missing " + required.getBlock().getName().getString() + " in inventory";
             currentTarget = null;
@@ -159,7 +189,9 @@ public final class LitematicaBuilder {
         }
 
         int selected = client.player.getInventory().getSelectedSlot();
-        if (mode == Mode.CREATIVE && slot < 0) {
+        if (mode == Mode.CREATIVE) {
+            // Creative mode can supply any schematic block: put the required
+            // item into the selected hotbar slot and sync that creative slot.
             ItemStack creativeStack = new ItemStack(required.getBlock().asItem());
             client.player.getInventory().setItem(selected, creativeStack);
             client.gameMode.handleCreativeModeItemAdd(creativeStack, selected + 36);
@@ -173,9 +205,9 @@ public final class LitematicaBuilder {
 
         client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, crosshair);
         client.player.swing(InteractionHand.MAIN_HAND);
-        status = "Placed block at " + currentTarget.toShortString();
-        placed++;
-        currentTarget = null;
+        placementPending = true;
+        placementWaitTicks = 0;
+        status = "Placing " + currentTarget.toShortString() + " (confirming...)";
     }
 
     private static BlockPos findNearestMissing(Minecraft client, Object schematicWorld, List<Object> placements) {
@@ -215,21 +247,21 @@ public final class LitematicaBuilder {
     }
 
     private static void pressMovement(Minecraft client, String fieldName, boolean down) {
-        try {
-            Object mapping = client.options.getClass().getField(fieldName).get(client.options);
-            mapping.getClass().getMethod("setDown", boolean.class).invoke(mapping, down);
-        } catch (ReflectiveOperationException ignored) {
-            // Key names differ between Minecraft mappings; report the limitation
-            // rather than crashing the client.
-            if (down) status = "Could not control movement key: " + fieldName;
+        // Use Minecraft's actual KeyMapping instances. Reflection against
+        // field names silently failed on some mappings, so W never activated.
+        switch (fieldName) {
+            case "keyUp" -> client.options.keyUp.setDown(down);
+            case "keyJump" -> client.options.keyJump.setDown(down);
+            case "keyShift" -> client.options.keyShift.setDown(down);
+            default -> { }
         }
     }
 
     private static void clearMovement(Minecraft client) {
         if (client == null) return;
-        pressMovement(client, "keyUp", false);
-        pressMovement(client, "keyJump", false);
-        pressMovement(client, "keyShift", false);
+        client.options.keyUp.setDown(false);
+        client.options.keyJump.setDown(false);
+        client.options.keyShift.setDown(false);
     }
 
     private static List<Object> getEnabledPlacements() {
