@@ -13,6 +13,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.inventory.ClickType;
 import java.util.UUID;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -35,6 +36,8 @@ public final class T7LXClient implements ClientModInitializer {
     private static long nextCrystalClickNanos;
     private static BlockPos crystalBase;
     private static UUID lastAttackedCrystal;
+    private static boolean autoTotem;
+    private static int lastTotemRefillTick = -1;
 
     @Override
     public void onInitializeClient() {
@@ -53,6 +56,7 @@ public final class T7LXClient implements ClientModInitializer {
             }
             if (freecam) tickFreecam(client);
             tickCrystalMacro(client);
+            tickAutoTotem(client);
         });
     }
 
@@ -179,6 +183,38 @@ public final class T7LXClient implements ClientModInitializer {
             client.gameMode.attack(client.player, crystal);
             client.player.swing(InteractionHand.MAIN_HAND);
             lastAttackedCrystal = crystal.getUUID();
+        }
+    }
+
+    public static boolean isAutoTotemEnabled() {
+        return autoTotem;
+    }
+
+    public static void toggleAutoTotem() {
+        autoTotem = !autoTotem;
+        lastTotemRefillTick = -1;
+    }
+
+    private static void tickAutoTotem(Minecraft client) {
+        if (!autoTotem || client.player == null || client.gameMode == null || client.screen != null) return;
+
+        // Keep the offhand supplied. When a totem pops, the next client tick
+        // swaps the next available totem from the inventory into the offhand.
+        if (client.player.getOffhandItem().is(Items.TOTEM_OF_UNDYING)) return;
+        if (lastTotemRefillTick == client.player.tickCount) return;
+
+        for (int inventorySlot = 0; inventorySlot < 36; inventorySlot++) {
+            if (!client.player.getInventory().getItem(inventorySlot).is(Items.TOTEM_OF_UNDYING)) continue;
+
+            int menuSlot = inventorySlot < 9 ? inventorySlot + 36 : inventorySlot;
+            client.gameMode.handleInventoryMouseClick(
+                    client.player.inventoryMenu.containerId,
+                    menuSlot,
+                    40,
+                    ClickType.SWAP,
+                    client.player);
+            lastTotemRefillTick = client.player.tickCount;
+            return;
         }
     }
 
