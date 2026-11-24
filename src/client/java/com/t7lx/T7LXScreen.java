@@ -10,7 +10,7 @@ import net.minecraft.network.chat.Component;
 public final class T7LXScreen extends Screen {
     private static final int BLUE = 0xFF39A9FF;
     private static final int PANEL = 0xF20B1424;
-    private static final int PANEL_HEIGHT = 250;
+    private static final int PANEL_HEIGHT = 300;
     private boolean showCpsSlider;
 
     public T7LXScreen() {
@@ -33,9 +33,14 @@ public final class T7LXScreen extends Screen {
             button.setMessage(crystalMacroLabel());
         }).bounds(x + 18, y + 108, panelWidth - 36, 28).build());
 
+        this.addRenderableWidget(Button.builder(autoTotemLabel(), button -> {
+            T7LXClient.toggleAutoTotem();
+            button.setMessage(autoTotemLabel());
+        }).bounds(x + 18, y + 144, panelWidth - 36, 28).build());
+
         if (showCpsSlider) {
             this.addRenderableWidget(new AbstractSliderButton(
-                    x + 18, y + 148, panelWidth - 36, 20,
+                    x + 18, y + 184, panelWidth - 36, 20,
                     Component.literal("Crystal CPS: " + T7LXClient.getCrystalCps()),
                     (T7LXClient.getCrystalCps() - 1) / 39.0) {
                 @Override
@@ -74,6 +79,10 @@ public final class T7LXScreen extends Screen {
         return Component.literal("Freecam: " + (T7LXClient.isFreecamEnabled() ? "ON" : "OFF"));
     }
 
+    private static Component autoTotemLabel() {
+        return Component.literal("Auto Totem: " + (T7LXClient.isAutoTotemEnabled() ? "ON" : "OFF"));
+    }
+
     private static Component crystalMacroLabel() {
         return Component.literal("Crystal Macro: " + (T7LXClient.isCrystalMacroEnabled() ? "ON" : "OFF")
                 + "  (Right-click for CPS)");
@@ -94,11 +103,11 @@ public final class T7LXScreen extends Screen {
                 y + 36, 0xFF8AA9C8, true);
         if (showCpsSlider) {
             graphics.text(this.font, "Adjust crystal placements per second (1-40)",
-                    x + 18, y + 176, 0xFF8AA9C8, true);
+                    x + 18, y + 212, 0xFF8AA9C8, true);
         }
         graphics.text(this.font, "RIGHT SHIFT  -  CLOSE MENU",
                 this.width / 2 - this.font.width("RIGHT SHIFT  -  CLOSE MENU") / 2,
-                y + 222, 0xFF8AA9C8, true);
+                y + 272, 0xFF8AA9C8, true);
     }
 
     @Override
