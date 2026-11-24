@@ -13,7 +13,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import java.util.UUID;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -207,11 +207,11 @@ public final class T7LXClient implements ClientModInitializer {
             if (!client.player.getInventory().getItem(inventorySlot).is(Items.TOTEM_OF_UNDYING)) continue;
 
             int menuSlot = inventorySlot < 9 ? inventorySlot + 36 : inventorySlot;
-            client.gameMode.handleInventoryMouseClick(
+            client.gameMode.handleContainerInput(
                     client.player.inventoryMenu.containerId,
                     menuSlot,
                     40,
-                    ClickType.SWAP,
+                    ContainerInput.SWAP,
                     client.player);
             lastTotemRefillTick = client.player.tickCount;
             return;
