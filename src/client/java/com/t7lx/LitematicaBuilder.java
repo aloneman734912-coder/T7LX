@@ -66,8 +66,9 @@ public final class LitematicaBuilder {
         if (++tickDelay < 3) return;
         tickDelay = 0;
 
-        if (mode == Mode.SURVIVAL && client.player.getAbilities().instabuild) {
-            // The mode is a placement preference; don't silently change the player's game mode.
+        if (mode == Mode.CREATIVE && !client.player.getAbilities().instabuild) {
+            status = "Creative mode selected: switch to Creative";
+            return;
         }
 
         Object schematicWorld = getSchematicWorld();
@@ -90,25 +91,26 @@ public final class LitematicaBuilder {
                     if (!current.isAir()) continue;
 
                     int hotbarSlot = findBlock(client, required);
-                    if (hotbarSlot < 0) {
-                        status = mode == Mode.SURVIVAL
-                                ? "Missing block in inventory"
-                                : "Add required block to inventory";
+                    if (hotbarSlot < 0 && mode == Mode.SURVIVAL) {
+                        status = "Missing block in inventory";
                         continue;
                     }
 
                     BlockHitResult hit = findSupport(client, pos);
                     if (hit == null) continue;
 
-                    int oldSelected = client.player.getInventory().selected;
-                    if (hotbarSlot >= 9) {
-                        // Swap a matching inventory stack into the selected hotbar slot.
+                    int selected = client.player.getInventory().selected;
+                    if (mode == Mode.CREATIVE && hotbarSlot < 0) {
+                        ItemStack creativeStack = new ItemStack(required.getBlock().asItem());
+                        client.player.getInventory().setItem(selected, creativeStack);
+                        client.gameMode.handleCreativeModeItemAdd(creativeStack, selected + 36);
+                    } else if (hotbarSlot >= 9) {
                         client.gameMode.handleContainerInput(
                                 client.player.inventoryMenu.containerId,
-                                hotbarSlot, oldSelected,
+                                hotbarSlot, selected,
                                 net.minecraft.world.inventory.ContainerInput.SWAP,
                                 client.player);
-                    } else {
+                    } else if (hotbarSlot >= 0) {
                         client.player.getInventory().selected = hotbarSlot;
                     }
 
