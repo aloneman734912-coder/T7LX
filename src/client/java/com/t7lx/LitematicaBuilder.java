@@ -111,7 +111,7 @@ public final class LitematicaBuilder {
                                 net.minecraft.world.inventory.ContainerInput.SWAP,
                                 client.player);
                     } else if (hotbarSlot >= 0) {
-                        client.player.getInventory().selected = hotbarSlot;
+                        client.player.getInventory().setSelectedSlot(hotbarSlot);
                     }
 
                     client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, hit);
