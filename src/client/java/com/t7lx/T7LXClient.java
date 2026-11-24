@@ -56,6 +56,21 @@ public final class T7LXClient implements ClientModInitializer {
         return freecam ? camera : null;
     }
 
+    public static void applyFreecamMouseLook(double mouseX, double mouseY) {
+        if (!freecam || camera == null) return;
+
+        float yawDelta = (float) mouseX * 0.15F;
+        float pitchDelta = (float) mouseY * 0.15F;
+        camera.setYRot(camera.getYRot() + yawDelta);
+        camera.setXRot(Math.max(-90.0F, Math.min(90.0F,
+                camera.getXRot() + pitchDelta)));
+
+        // This camera is client-only and is not ticked by the world.
+        // Keep previous and current rotations identical to prevent interpolation jitter.
+        camera.yRotO = camera.getYRot();
+        camera.xRotO = camera.getXRot();
+    }
+
     static void toggleFreecam() {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.level == null) return;
@@ -122,10 +137,12 @@ public final class T7LXClient implements ClientModInitializer {
         double sideZ = Math.sin(radians);
         double dx = 0, dy = 0, dz = 0;
 
-        if (forwardKey.isDown()) { dx += forwardX; dz += forwardZ; }
-        if (backKey.isDown()) { dx -= forwardX; dz -= forwardZ; }
-        if (rightKey.isDown()) { dx -= sideX; dz -= sideZ; }
-        if (leftKey.isDown()) { dx += sideX; dz += sideZ; }
+        // Match the expected freecam controls: W forward, S backward,
+        // A left, and D right relative to the camera's facing direction.
+        if (forwardKey.isDown()) { dx -= forwardX; dz -= forwardZ; }
+        if (backKey.isDown()) { dx += forwardX; dz += forwardZ; }
+        if (rightKey.isDown()) { dx += sideX; dz += sideZ; }
+        if (leftKey.isDown()) { dx -= sideX; dz -= sideZ; }
         if (upKey.isDown()) dy += 1;
         if (downKey.isDown()) dy -= 1;
 
