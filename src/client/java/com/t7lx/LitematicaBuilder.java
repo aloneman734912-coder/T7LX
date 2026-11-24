@@ -99,7 +99,7 @@ public final class LitematicaBuilder {
                     BlockHitResult hit = findSupport(client, pos);
                     if (hit == null) continue;
 
-                    int selected = client.player.getInventory().selected;
+                    int selected = client.player.getInventory().getSelectedSlot();
                     if (mode == Mode.CREATIVE && hotbarSlot < 0) {
                         ItemStack creativeStack = new ItemStack(required.getBlock().asItem());
                         client.player.getInventory().setItem(selected, creativeStack);
