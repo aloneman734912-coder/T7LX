@@ -37,6 +37,10 @@ public final class LitematicaBuilder {
     private LitematicaBuilder() {}
 
     public static void start() {
+        Minecraft client = Minecraft.getInstance();
+        if (client.player != null) {
+            mode = client.player.getAbilities().instabuild ? Mode.CREATIVE : Mode.SURVIVAL;
+        }
         running = true;
         paused = false;
         placed = 0;
