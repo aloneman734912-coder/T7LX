@@ -2,6 +2,7 @@ package com.t7lx.mixin;
 
 import com.t7lx.T7LXClient;
 import net.minecraft.client.MouseHandler;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,15 +14,15 @@ public abstract class MouseHandlerMixin {
             method = "turnPlayer",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/Entity;turn(DD)V"
+                    target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V"
             )
     )
-    private void t7lx$turnFreecamCamera(Entity entity, double yaw, double pitch) {
+    private void t7lx$turnFreecamCamera(LocalPlayer player, double yaw, double pitch) {
         Entity camera = T7LXClient.getFreecamCamera();
         if (camera != null) {
             camera.turn(yaw, pitch);
         } else {
-            entity.turn(yaw, pitch);
+            player.turn(yaw, pitch);
         }
     }
 }
