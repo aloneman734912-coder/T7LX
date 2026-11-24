@@ -10,7 +10,7 @@ import net.minecraft.network.chat.Component;
 public final class T7LXScreen extends Screen {
     private static final int BLUE = 0xFF39A9FF;
     private static final int PANEL = 0xF20B1424;
-    private static final int PANEL_HEIGHT = 300;
+    private static final int PANEL_HEIGHT = 410;
     private boolean showCpsSlider;
 
     public T7LXScreen() {
@@ -19,33 +19,49 @@ public final class T7LXScreen extends Screen {
 
     @Override
     protected void init() {
-        int panelWidth = 330;
+        int panelWidth = 340;
         int x = (this.width - panelWidth) / 2;
         int y = (this.height - PANEL_HEIGHT) / 2;
 
         this.addRenderableWidget(Button.builder(freecamLabel(), button -> {
             T7LXClient.toggleFreecam();
             button.setMessage(freecamLabel());
-        }).bounds(x + 18, y + 72, panelWidth - 36, 28).build());
+        }).bounds(x + 18, y + 70, panelWidth - 36, 27).build());
 
         this.addRenderableWidget(Button.builder(crystalMacroLabel(), button -> {
             T7LXClient.toggleCrystalMacro();
             button.setMessage(crystalMacroLabel());
-        }).bounds(x + 18, y + 108, panelWidth - 36, 28).build());
+        }).bounds(x + 18, y + 103, panelWidth - 36, 27).build());
 
         this.addRenderableWidget(Button.builder(autoTotemLabel(), button -> {
             T7LXClient.toggleAutoTotem();
             button.setMessage(autoTotemLabel());
-        }).bounds(x + 18, y + 144, panelWidth - 36, 28).build());
+        }).bounds(x + 18, y + 136, panelWidth - 36, 27).build());
 
         this.addRenderableWidget(Button.builder(speedMineLabel(), button -> {
             T7LXClient.toggleSpeedMine();
             button.setMessage(speedMineLabel());
-        }).bounds(x + 18, y + 180, panelWidth - 36, 28).build());
+        }).bounds(x + 18, y + 169, panelWidth - 36, 27).build());
+
+        this.addRenderableWidget(Button.builder(builderModeLabel(), button -> {
+            LitematicaBuilder.toggleMode();
+            button.setMessage(builderModeLabel());
+        }).bounds(x + 18, y + 211, panelWidth - 36, 27).build());
+
+        this.addRenderableWidget(Button.builder(builderRunLabel(), button -> {
+            LitematicaBuilder.pauseOrResume();
+            button.setMessage(builderRunLabel());
+        }).bounds(x + 18, y + 244, panelWidth - 36, 27).build());
+
+        this.addRenderableWidget(Button.builder(Component.literal("Litematica Builder: STOP"), button -> {
+            LitematicaBuilder.stop();
+            this.clearWidgets();
+            this.init();
+        }).bounds(x + 18, y + 277, panelWidth - 36, 27).build());
 
         if (showCpsSlider) {
             this.addRenderableWidget(new AbstractSliderButton(
-                    x + 18, y + 184, panelWidth - 36, 20,
+                    x + 18, y + 330, panelWidth - 36, 20,
                     Component.literal("Crystal CPS: " + T7LXClient.getCrystalCps()),
                     (T7LXClient.getCrystalCps() - 1) / 39.0) {
                 @Override
@@ -67,12 +83,12 @@ public final class T7LXScreen extends Screen {
         double mouseX = event.x();
         double mouseY = event.y();
         int button = event.button();
-        int x = (this.width - 330) / 2;
+        int x = (this.width - 340) / 2;
         int y = (this.height - PANEL_HEIGHT) / 2;
-        boolean onCrystalOption = mouseX >= x + 18 && mouseX <= x + 312
-                && mouseY >= y + 108 && mouseY <= y + 136;
+        boolean onCrystalOption = mouseX >= x + 18 && mouseX <= x + 322
+                && mouseY >= y + 103 && mouseY <= y + 130;
         if (button == 1 && onCrystalOption) {
-            showCpsSlider = true;
+            showCpsSlider = !showCpsSlider;
             this.clearWidgets();
             this.init();
             return true;
@@ -97,9 +113,20 @@ public final class T7LXScreen extends Screen {
                 + "  (Right-click for CPS)");
     }
 
+    private static Component builderModeLabel() {
+        return Component.literal("Litematica Mode: " + LitematicaBuilder.getMode());
+    }
+
+    private static Component builderRunLabel() {
+        String label = LitematicaBuilder.isRunning()
+                ? (LitematicaBuilder.isPaused() ? "RESUME" : "PAUSE")
+                : "START";
+        return Component.literal("Litematica Builder: " + label);
+    }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        int panelWidth = 330;
+        int panelWidth = 340;
         int x = (this.width - panelWidth) / 2;
         int y = (this.height - PANEL_HEIGHT) / 2;
 
@@ -107,16 +134,20 @@ public final class T7LXScreen extends Screen {
         graphics.fill(x, y, x + panelWidth, y + 3, BLUE);
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         graphics.text(this.font, "T7LX", this.width / 2 - this.font.width("T7LX") / 2,
-                y + 16, 0xFFFFFFFF, true);
+                y + 14, 0xFFFFFFFF, true);
         graphics.text(this.font, "CLIENT MOD MENU", this.width / 2 - this.font.width("CLIENT MOD MENU") / 2,
-                y + 36, 0xFF8AA9C8, true);
+                y + 33, 0xFF8AA9C8, true);
+        graphics.text(this.font, "Litematica: " + LitematicaBuilder.getStatus(),
+                x + 18, y + 312, 0xFFB7D5F2, true);
+        graphics.text(this.font, "Blocks placed: " + LitematicaBuilder.getPlacedCount(),
+                x + 18, y + 326, 0xFF8AA9C8, true);
         if (showCpsSlider) {
             graphics.text(this.font, "Adjust crystal placements per second (1-40)",
-                    x + 18, y + 212, 0xFF8AA9C8, true);
+                    x + 18, y + 354, 0xFF8AA9C8, true);
         }
         graphics.text(this.font, "RIGHT SHIFT  -  CLOSE MENU",
                 this.width / 2 - this.font.width("RIGHT SHIFT  -  CLOSE MENU") / 2,
-                y + 272, 0xFF8AA9C8, true);
+                y + 385, 0xFF8AA9C8, true);
     }
 
     @Override
