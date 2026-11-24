@@ -38,6 +38,7 @@ public final class T7LXClient implements ClientModInitializer {
     private static UUID lastAttackedCrystal;
     private static boolean autoTotem;
     private static int lastTotemRefillTick = -1;
+    private static boolean speedMine;
 
     @Override
     public void onInitializeClient() {
@@ -64,6 +65,9 @@ public final class T7LXClient implements ClientModInitializer {
         return KeyMappingHelper.registerKeyMapping(
                 new KeyMapping(name, InputConstants.Type.KEYSYM, key, CATEGORY));
     }
+
+    public static boolean isSpeedMineEnabled() { return speedMine; }
+    public static void toggleSpeedMine() { speedMine = !speedMine; }
 
     public static boolean isFreecamEnabled() {
         return freecam;
