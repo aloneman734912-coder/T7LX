@@ -38,6 +38,11 @@ public final class T7LXScreen extends Screen {
             button.setMessage(autoTotemLabel());
         }).bounds(x + 18, y + 144, panelWidth - 36, 28).build());
 
+        this.addRenderableWidget(Button.builder(speedMineLabel(), button -> {
+            T7LXClient.toggleSpeedMine();
+            button.setMessage(speedMineLabel());
+        }).bounds(x + 18, y + 180, panelWidth - 36, 28).build());
+
         if (showCpsSlider) {
             this.addRenderableWidget(new AbstractSliderButton(
                     x + 18, y + 184, panelWidth - 36, 20,
@@ -73,6 +78,10 @@ public final class T7LXScreen extends Screen {
             return true;
         }
         return super.mouseClicked(event, doubleClick);
+    }
+
+    private static Component speedMineLabel() {
+        return Component.literal("T7LXs Speed mine: " + (T7LXClient.isSpeedMineEnabled() ? "ON" : "OFF") + " (8x)");
     }
 
     private static Component freecamLabel() {
