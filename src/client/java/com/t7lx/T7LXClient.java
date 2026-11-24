@@ -10,6 +10,10 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import java.util.UUID;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -29,6 +33,8 @@ public final class T7LXClient implements ClientModInitializer {
     private static boolean crystalMacro;
     private static int crystalCps = 10;
     private static long nextCrystalClickNanos;
+    private static BlockPos crystalBase;
+    private static UUID lastAttackedCrystal;
 
     @Override
     public void onInitializeClient() {
@@ -133,24 +139,46 @@ public final class T7LXClient implements ClientModInitializer {
     }
 
     private static void tickCrystalMacro(Minecraft client) {
-        if (!crystalMacro || client.player == null || client.gameMode == null
-                || client.screen != null || !client.options.keyUse.isDown()
-                || !client.player.getMainHandItem().is(Items.END_CRYSTAL)
-                || !(client.hitResult instanceof BlockHitResult blockHit)) {
+        boolean holdingUse = client.options.keyUse.isDown();
+        if (!crystalMacro || client.player == null || client.level == null || client.gameMode == null
+                || client.screen != null || !holdingUse
+                || !client.player.getMainHandItem().is(Items.END_CRYSTAL)) {
             nextCrystalClickNanos = 0L;
+            crystalBase = null;
+            lastAttackedCrystal = null;
             return;
         }
 
-        long now = System.nanoTime();
-        long interval = 1_000_000_000L / crystalCps;
-        if (nextCrystalClickNanos == 0L) nextCrystalClickNanos = now;
+        // Remember the base even after the crosshair moves onto the spawned crystal.
+        if (client.hitResult instanceof BlockHitResult blockHit) {
+            crystalBase = blockHit.getBlockPos();
+            long now = System.nanoTime();
+            long interval = 1_000_000_000L / crystalCps;
+            if (nextCrystalClickNanos == 0L) nextCrystalClickNanos = now;
 
-        // Catch up with multiple uses per tick so settings above 20 CPS work.
-        int clicks = 0;
-        while (now >= nextCrystalClickNanos && clicks < 3) {
-            client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, blockHit);
-            nextCrystalClickNanos += interval;
-            clicks++;
+            int clicks = 0;
+            while (now >= nextCrystalClickNanos && clicks < 3) {
+                client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, blockHit);
+                nextCrystalClickNanos += interval;
+                clicks++;
+            }
+        }
+
+        if (crystalBase == null) return;
+
+        // Attack each spawned crystal once, as soon as it becomes visible.
+        var nearbyCrystals = client.level.getEntitiesOfClass(
+                EndCrystal.class, new AABB(crystalBase).inflate(2.0));
+        if (nearbyCrystals.isEmpty()) {
+            lastAttackedCrystal = null;
+            return;
+        }
+
+        EndCrystal crystal = nearbyCrystals.get(0);
+        if (!crystal.getUUID().equals(lastAttackedCrystal)) {
+            client.gameMode.attack(client.player, crystal);
+            client.player.swing(InteractionHand.MAIN_HAND);
+            lastAttackedCrystal = crystal.getUUID();
         }
     }
 
