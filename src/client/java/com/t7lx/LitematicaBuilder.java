@@ -27,6 +27,9 @@ public final class LitematicaBuilder {
     private static Mode mode = Mode.SURVIVAL;
     private static int placed;
     private static int tickDelay;
+    private static BlockPos currentTarget;
+    private static BlockPos currentSupport;
+    private static BlockHitResult currentSupportHit;
     private static String status = "Stopped";
 
     private LitematicaBuilder() {}
@@ -48,6 +51,8 @@ public final class LitematicaBuilder {
     public static void stop() {
         running = false;
         paused = false;
+        currentTarget = null;
+        clearMovement(Minecraft.getInstance());
         status = "Stopped";
     }
 
@@ -60,81 +65,171 @@ public final class LitematicaBuilder {
 
     public static void tick(Minecraft client) {
         if (!running || paused || client.player == null || client.level == null
-                || client.gameMode == null || client.screen != null) return;
-        if (++tickDelay < 3) return;
-        tickDelay = 0;
-
+                || client.gameMode == null || client.screen != null) {
+            if (!running || paused || client.screen != null) clearMovement(client);
+            return;
+        }
+        // One decision every client tick: no artificial printer delay.
         if (mode == Mode.CREATIVE && !client.player.getAbilities().instabuild) {
             status = "Creative selected: switch to Creative";
+            clearMovement(client);
             return;
         }
 
         Object schematicWorld = getSchematicWorld();
         if (schematicWorld == null) {
             status = "Litematica schematic world unavailable";
+            clearMovement(client);
             return;
         }
-
         List<Object> placements = getEnabledPlacements();
         if (placements.isEmpty()) {
             status = "No loaded Litematica placement found";
+            clearMovement(client);
             return;
         }
 
-        BlockPos origin = client.player.blockPosition();
-        boolean hasTargetInRange = false;
-        boolean missingInventoryBlock = false;
+        // Keep the current target until it is completed, preventing the bot
+        // from constantly changing direction while walking to a block.
+        if (currentTarget != null) {
+            BlockState now = client.level.getBlockState(currentTarget);
+            BlockState wanted = getSchematicState(schematicWorld, currentTarget);
+            if (wanted == null || !now.isAir() || wanted.isAir()) currentTarget = null;
+        }
 
-        // The hologram is in world coordinates after Litematica applies its
-        // placement origin, rotation and mirror. Only inspect positions inside
-        // the actual active placement boxes.
-        for (int y = -2; y <= 5; y++) {
-            for (int x = -5; x <= 5; x++) {
-                for (int z = -5; z <= 5; z++) {
+        if (currentTarget == null) {
+            currentTarget = findNearestMissing(client, schematicWorld, placements);
+            currentSupport = null;
+            currentSupportHit = null;
+        }
+        if (currentTarget == null) {
+            clearMovement(client);
+            status = "No reachable missing blocks found in loaded placement";
+            return;
+        }
+
+        BlockState required = getSchematicState(schematicWorld, currentTarget);
+        if (required == null || required.isAir()) {
+            currentTarget = null;
+            return;
+        }
+        int slot = findBlock(client, required);
+        if (slot < 0 && mode == Mode.SURVIVAL) {
+            clearMovement(client);
+            status = "Missing " + required.getBlock().getName().getString() + " in inventory";
+            currentTarget = null;
+            return;
+        }
+
+        currentSupportHit = findSupport(client, currentTarget);
+        if (currentSupportHit == null) {
+            clearMovement(client);
+            status = "Waiting for a supporting block";
+            return;
+        }
+        currentSupport = currentSupportHit.getBlockPos();
+
+        Vec3 eye = client.player.getEyePosition();
+        Vec3 targetCenter = Vec3.atCenterOf(currentTarget);
+        double distance = eye.distanceTo(targetCenter);
+
+        if (distance > 4.35) {
+            // Walk the real player toward the next required position. Camera
+            // yaw follows the route, and jump is pulsed when the player hits
+            // an obstacle. This is normal client movement, not teleporting.
+            aimAt(client, targetCenter);
+            pressMovement(client, "keyUp", true);
+            pressMovement(client, "keyJump", client.player.horizontalCollision);
+            pressMovement(client, "keyShift", false);
+            status = "Walking to block " + currentTarget.toShortString();
+            return;
+        }
+
+        clearMovement(client);
+        // Aim the actual player camera at the face which receives the block.
+        aimAt(client, currentSupportHit.getLocation());
+
+        // Only interact once the player's real crosshair is on the intended
+        // support face. This keeps placement aligned with what the cursor sees.
+        if (!(client.hitResult instanceof BlockHitResult crosshair)
+                || !crosshair.getBlockPos().equals(currentSupport)
+                || crosshair.getDirection() != currentSupportHit.getDirection()) {
+            status = "Aiming at " + currentTarget.toShortString();
+            return;
+        }
+
+        int selected = client.player.getInventory().getSelectedSlot();
+        if (mode == Mode.CREATIVE && slot < 0) {
+            ItemStack creativeStack = new ItemStack(required.getBlock().asItem());
+            client.player.getInventory().setItem(selected, creativeStack);
+            client.gameMode.handleCreativeModeItemAdd(creativeStack, selected + 36);
+        } else if (slot >= 9) {
+            client.gameMode.handleContainerInput(
+                    client.player.inventoryMenu.containerId, slot, selected,
+                    net.minecraft.world.inventory.ContainerInput.SWAP, client.player);
+        } else if (slot >= 0) {
+            client.player.getInventory().setSelectedSlot(slot);
+        }
+
+        client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, crosshair);
+        client.player.swing(InteractionHand.MAIN_HAND);
+        status = "Placed block at " + currentTarget.toShortString();
+        placed++;
+        currentTarget = null;
+    }
+
+    private static BlockPos findNearestMissing(Minecraft client, Object schematicWorld, List<Object> placements) {
+        BlockPos origin = client.player.blockPosition();
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        // Scan a generous local cube around the player; the player is moved
+        // toward the closest supported missing block and the scan repeats.
+        for (int y = -8; y <= 8; y++) {
+            for (int x = -16; x <= 16; x++) {
+                for (int z = -16; z <= 16; z++) {
                     BlockPos pos = origin.offset(x, y, z);
                     if (!insideAnyPlacement(placements, pos)) continue;
-
                     BlockState required = getSchematicState(schematicWorld, pos);
-                    if (required == null || required.isAir()) continue;
-
-                    BlockState current = client.level.getBlockState(pos);
-                    if (!current.isAir()) continue;
-                    hasTargetInRange = true;
-
-                    int hotbarSlot = findBlock(client, required);
-                    if (hotbarSlot < 0 && mode == Mode.SURVIVAL) {
-                        missingInventoryBlock = true;
-                        continue;
+                    if (required == null || required.isAir() || !client.level.getBlockState(pos).isAir()) continue;
+                    if (mode == Mode.SURVIVAL && findBlock(client, required) < 0) continue;
+                    if (findSupport(client, pos) == null) continue;
+                    double distance = client.player.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos));
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        best = pos;
                     }
-
-                    BlockHitResult hit = findSupport(client, pos);
-                    if (hit == null) continue;
-
-                    int selected = client.player.getInventory().getSelectedSlot();
-                    if (mode == Mode.CREATIVE && hotbarSlot < 0) {
-                        ItemStack creativeStack = new ItemStack(required.getBlock().asItem());
-                        client.player.getInventory().setItem(selected, creativeStack);
-                        client.gameMode.handleCreativeModeItemAdd(creativeStack, selected + 36);
-                    } else if (hotbarSlot >= 9) {
-                        client.gameMode.handleContainerInput(
-                                client.player.inventoryMenu.containerId, hotbarSlot, selected,
-                                net.minecraft.world.inventory.ContainerInput.SWAP, client.player);
-                    } else if (hotbarSlot >= 0) {
-                        client.player.getInventory().setSelectedSlot(hotbarSlot);
-                    }
-
-                    client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, hit);
-                    client.player.swing(InteractionHand.MAIN_HAND);
-                    placed++;
-                    status = "Building... placed " + placed;
-                    return;
                 }
             }
         }
+        return best;
+    }
 
-        if (missingInventoryBlock) status = "Missing required blocks in inventory";
-        else if (hasTargetInRange) status = "Waiting for a placeable block/support";
-        else status = "Hologram found - move closer to its outline";
+    private static void aimAt(Minecraft client, Vec3 point) {
+        Vec3 delta = point.subtract(client.player.getEyePosition());
+        double horizontal = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
+        float yaw = (float) (Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90.0);
+        float pitch = (float) -Math.toDegrees(Math.atan2(delta.y, horizontal));
+        client.player.setYRot(yaw);
+        client.player.setYHeadRot(yaw);
+        client.player.setXRot(Math.max(-90.0F, Math.min(90.0F, pitch)));
+    }
+
+    private static void pressMovement(Minecraft client, String fieldName, boolean down) {
+        try {
+            Object mapping = client.options.getClass().getField(fieldName).get(client.options);
+            mapping.getClass().getMethod("setDown", boolean.class).invoke(mapping, down);
+        } catch (ReflectiveOperationException ignored) {
+            // Key names differ between Minecraft mappings; report the limitation
+            // rather than crashing the client.
+            if (down) status = "Could not control movement key: " + fieldName;
+        }
+    }
+
+    private static void clearMovement(Minecraft client) {
+        if (client == null) return;
+        pressMovement(client, "keyUp", false);
+        pressMovement(client, "keyJump", false);
+        pressMovement(client, "keyShift", false);
     }
 
     private static List<Object> getEnabledPlacements() {
