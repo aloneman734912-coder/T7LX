@@ -4,7 +4,8 @@
   "package": "com.t7lx.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "MouseHandlerMixin"
+    "MouseHandlerMixin",
+    "SpeedMineMixin"
   ],
   "injectors": {
     "defaultRequire": 1
