@@ -7,6 +7,9 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -23,6 +26,9 @@ public final class T7LXClient implements ClientModInitializer {
     private static ArmorStand camera;
     private static float savedYaw, savedPitch;
     private static MobEffectInstance previousNightVision;
+    private static boolean crystalMacro;
+    private static int crystalCps = 10;
+    private static long nextCrystalClickNanos;
 
     @Override
     public void onInitializeClient() {
@@ -40,6 +46,7 @@ public final class T7LXClient implements ClientModInitializer {
                 else client.setScreen(new T7LXScreen());
             }
             if (freecam) tickFreecam(client);
+            tickCrystalMacro(client);
         });
     }
 
@@ -104,6 +111,46 @@ public final class T7LXClient implements ClientModInitializer {
             if (previousNightVision != null) client.player.addEffect(previousNightVision);
             previousNightVision = null;
             camera = null;
+        }
+    }
+
+
+    public static boolean isCrystalMacroEnabled() {
+        return crystalMacro;
+    }
+
+    public static void toggleCrystalMacro() {
+        crystalMacro = !crystalMacro;
+        nextCrystalClickNanos = 0L;
+    }
+
+    public static int getCrystalCps() {
+        return crystalCps;
+    }
+
+    public static void setCrystalCps(int cps) {
+        crystalCps = Math.max(1, Math.min(40, cps));
+    }
+
+    private static void tickCrystalMacro(Minecraft client) {
+        if (!crystalMacro || client.player == null || client.gameMode == null
+                || client.screen != null || !client.options.keyUse.isDown()
+                || !client.player.getMainHandItem().is(Items.END_CRYSTAL)
+                || !(client.hitResult instanceof BlockHitResult blockHit)) {
+            nextCrystalClickNanos = 0L;
+            return;
+        }
+
+        long now = System.nanoTime();
+        long interval = 1_000_000_000L / crystalCps;
+        if (nextCrystalClickNanos == 0L) nextCrystalClickNanos = now;
+
+        // Catch up with multiple uses per tick so settings above 20 CPS work.
+        int clicks = 0;
+        while (now >= nextCrystalClickNanos && clicks < 3) {
+            client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, blockHit);
+            nextCrystalClickNanos += interval;
+            clicks++;
         }
     }
 
