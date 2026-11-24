@@ -57,7 +57,8 @@ public final class T7LXClient implements ClientModInitializer {
             }
             if (freecam) tickFreecam(client);
             tickCrystalMacro(client);
-            tickAutoTotem(client);\n            LitematicaBuilder.tick(client);
+            tickAutoTotem(client);
+            LitematicaBuilder.tick(client);
         });
     }
 
