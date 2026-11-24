@@ -164,11 +164,11 @@ public final class T7LXClient implements ClientModInitializer {
             long interval = 1_000_000_000L / crystalCps;
             if (nextCrystalClickNanos == 0L) nextCrystalClickNanos = now;
 
-            int clicks = 0;
-            while (now >= nextCrystalClickNanos && clicks < 3) {
+            // Send at most one placement attempt per tick. Catch-up bursts can
+            // trigger server corrections when crystals and totems are used together.
+            if (now >= nextCrystalClickNanos) {
                 client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, blockHit);
-                nextCrystalClickNanos += interval;
-                clicks++;
+                nextCrystalClickNanos = now + interval;
             }
         }
 
@@ -228,6 +228,12 @@ public final class T7LXClient implements ClientModInitializer {
             if (client.player != null) client.setCameraEntity(client.player);
             camera = null;
             return;
+        }
+
+        // Minecraft may reset the active camera during a totem-pop/respawn
+        // transition. Re-attach our client-only camera while freecam is enabled.
+        if (client.getCameraEntity() != camera) {
+            client.setCameraEntity(camera);
         }
 
         // Mouse input rotates the freecam directly; do not copy player rotations.
